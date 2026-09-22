@@ -22,12 +22,34 @@ names a target of "4 of 5", and four of three is not a thing.
 """
 
 QUESTIONS = [
-    # {"question": "...", "expects": "..."},
-    {"question": "", "expects": ""},
-    {"question": "", "expects": ""},
-    {"question": "", "expects": ""},
-    {"question": "", "expects": ""},
-    {"question": "", "expects": ""},
+    # Answer lives in admin_housing_lottery.txt. The point of the question is
+    # that the obvious answer ("yes, it's a lottery") is wrong.
+    {
+        "question": "Is the housing lottery actually random?",
+        "expects": "credit hours",
+    },
+    # housing_aldridge_hall_laundry.txt. "1.75" rather than "$1.75" so the
+    # check still passes if the answer writes the number without the sign.
+    {
+        "question": "How much does a wash and dry cost in Aldridge Hall?",
+        "expects": "1.75",
+    },
+    # course_cs_210_exams.txt. The distinguishing fact is where the exam
+    # material comes from, not that exams exist.
+    {
+        "question": "Are CS 210 exams based on the textbook or the lectures?",
+        "expects": "lecture",
+    },
+    # admin_grade_appeals.txt. See the note below about "fifteen" vs "15".
+    {
+        "question": "How long do I have to file a grade appeal?",
+        "expects": "fifteen",
+    },
+    # admin_printing_quota.txt. "30" catches "$30" and "30 dollars" both.
+    {
+        "question": "How much printing does each student get per semester?",
+        "expects": "30",
+    },
 ]
 
 # Questions from a different world entirely. Your gate should refuse all five.
