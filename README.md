@@ -29,54 +29,133 @@
 
 ## Chunking Strategy
 
-**Chunk size:**
-**Overlap:**
+**Chunk size:** 400 characters, as a ceiling rather than a window
+**Overlap:** 0
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
+I chunk on paragraph boundaries, and I prepend the document's title line to
+every chunk. `CHUNK_SIZE` only fires on a paragraph longer than 400 characters,
+which in this corpus is rare; `MIN_CHUNK_CHARS = 100` merges anything shorter
+than that into its neighbour.
 
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
+**Why not a character window.** `campus_life` is 88 posts averaging 317
+characters. The starter's 800-character window never cut anything, so one post
+was one chunk — including posts holding two unrelated thoughts.
+`health_center.txt` is walk-in hours in its first paragraph and counselling
+intake in its second. `dining_kestrel_commons.txt` is wait times, then opening
+hours and prices. Asking about counselling waits returned a chunk that was half
+about something else. Paragraph breaks in these posts are topic breaks, so
+that's where I cut.
 
-     Milestone 3. -->
+**Why the title rides along.** Splitting on paragraphs alone creates orphans.
+Paragraph two of `housing_aldridge_hall_laundry.txt` reads "Best time to do
+laundry here is Tuesday or Wednesday morning" — "here" names nothing once it's
+separated from the title. Sample Chunk 3 below has the same problem with "It's
+front-loaded". Prepending the title fixes both, and it's why splitting on
+paragraphs didn't just trade a noise problem for a fragment problem.
+
+**Why zero overlap.** Overlap repairs thoughts cut in half by an arbitrary
+boundary. A blank line isn't arbitrary, and the title header already carries
+the context overlap would have supplied.
+
+**What changed, in numbers.**
+
+| | Chunks | Average | Shortest | Longest |
+|---|---|---|---|---|
+| Starter (`fallback_split`, 800/120) | 88 | ~317 | — | — |
+| Mine (`split_documents`, 400/0) | 135 | 217 | 117 | 409 |
+
+Two things in that row are worth naming. The shortest chunk is 117 characters,
+above the 100-character floor, so the corpus contains no fragments. The longest
+is 409, which is over my stated ceiling — the ceiling applies to the paragraph
+and the title is prepended afterwards, adding about 25 characters. That's the
+rule working as written, not a chunk that escaped it.
+
+**What I got wrong on the first pass.** I set the 100-character floor expecting
+it to catch stray fragments. It mostly did something else: it merged short
+paragraphs back into posts where both paragraphs were about the same topic —
+`housing_aldridge_hall_noise.txt` has an 89-character opening that merged
+forward, and the laundry post's short second paragraph merged back. Both pairs
+belonged together. The rule was right for a reason I hadn't predicted.
+
+**A property of this corpus that will matter later.** 20 of the 88 documents
+open with one of three stock phrases — "I'm a junior and I've done this twice
+now", "Asked about this a lot so writing it down", "People keep asking so". All
+of the `*_noise.txt` and `*_workload.txt` files are near-templates of each
+other. Twenty chunks sharing an opening sentence look more alike to the embedder
+than their content warrants, which should narrow the gap between my in-corpus
+and out-of-corpus distances in Milestone 4.
 
 ## Sample Chunks
 
-<!-- Five chunks, pasted as text. Label each one and name the file it came from
-     AND the function that produced it — the grader checks your code against
-     what you claim here.
+All five produced by `chunker.py::split_documents`.
 
-     `python app.py chunks -n 5` prints all three for you. Copy them straight
-     across.
-
-     Milestone 3. -->
-
-**Chunk 1** — source: `` — produced by: ``
+**Chunk 1** — source: `admin_add_drop_deadline.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+On the add/drop deadline
+
+You can add a course through the end of the second week. Dropping is a longer
+window — through the end of week six — but a drop after week two shows as a W
+on your transcript. Nothing anywhere on the registrar's site says this plainly,
+and students find out from each other.
 ```
 
-**Chunk 2** — source: `` — produced by: ``
+Answers "when can I add a course", "how late can I drop", and "does dropping
+show on my transcript" without any surrounding text.
+
+**Chunk 2** — source: `course_cs_340.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+CS 340 Databases
+
+I'm a junior and I've done this twice now. Format is lecture twice a week plus
+a project that runs the whole term. Assessment: one midterm and a final, both
+open-book. Lightly curved, usually two or three points.
 ```
 
-**Chunk 3** — source: `` — produced by: ``
+Answers how CS 340 is assessed and whether exams are open-book. A third of it
+is the stock opening sentence, which carries no information.
+
+**Chunk 3** — source: `course_phys_130_workload.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+Workload for PHYS 130 Mechanics
+
+People keep asking so: 7 hours a week, plus 3 on lab weeks. That's real time,
+not optimistic time.
+
+It's front-loaded — the first month is heavier than the rest, partly because
+you're learning the format.
 ```
 
-**Chunk 4** — source: `` — produced by: ``
+Answers "how many hours a week is PHYS 130". Note "It's front-loaded" — "it"
+only resolves because the title is prepended. Without that, this chunk breaks.
+
+**Chunk 4** — source: `health_center.txt#1` — produced by: `chunker.py::split_documents`
 
 ```
+The health centre
+
+Counselling is separate, in the same building, and has its own intake process
+with a shorter wait than people expect — usually three or four days for a first
+session.
 ```
 
-**Chunk 5** — source: `` — produced by: ``
+Answers "how long is the wait for counselling". This chunk did not exist under
+the starter's chunker — it was the second half of a document whose first half
+is about walk-in hours, so a counselling question retrieved both.
+
+**Chunk 5** — source: `housing_morrow_house_noise.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+Noise levels in Morrow House
+
+Asked about this a lot so writing it down. Loud until about 1am on weekends, no
+enforced quiet hours.
 ```
+
+Answers "are there quiet hours in Morrow House". Shortest of the five, and the
+first sentence is the stock opening, but the answer survives.
 
 ## Sample Answer
 

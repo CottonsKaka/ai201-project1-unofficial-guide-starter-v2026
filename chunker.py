@@ -22,6 +22,7 @@ to it, write down what you saw, and move on. That's a real observation about
 your pipeline, not giving up.
 """
 
+import re
 from dataclasses import dataclass
 
 import config
@@ -80,24 +81,119 @@ def fallback_split(
     return chunks
 
 
+def _title_and_body(text: str) -> tuple[str, str]:
+    """
+    Every document in campus_life opens with a title line, then a blank line,
+    then the post itself — "Laundry in Aldridge Hall", "On the printing quota".
+    That line is the only place the building or the topic is named, so it has
+    to travel with every chunk cut out of the document.
+    """
+    lines = text.split("\n")
+    title = lines[0].strip()
+    body = "\n".join(lines[1:]).strip()
+    return title, body
+
+
+def _paragraphs(body: str) -> list[str]:
+    """Split on blank lines. ingest.clean_text has already normalised these."""
+    return [p.strip() for p in re.split(r"\n\s*\n", body) if p.strip()]
+
+
+def _merge_short(paragraphs: list[str], minimum: int) -> list[str]:
+    """
+    Fold anything under `minimum` characters into its neighbour.
+
+    A one-line paragraph on its own embeds badly — it's the fragment problem
+    the brief warns about, arrived at from the other direction.
+    """
+    merged: list[str] = []
+    for para in paragraphs:
+        if merged and len(merged[-1]) < minimum:
+            merged[-1] = f"{merged[-1]}\n\n{para}"
+        else:
+            merged.append(para)
+
+    # A short final paragraph has no successor to merge forward into.
+    if len(merged) > 1 and len(merged[-1]) < minimum:
+        tail = merged.pop()
+        merged[-1] = f"{merged[-1]}\n\n{tail}"
+
+    return merged
+
+
+def _split_long(paragraph: str, ceiling: int) -> list[str]:
+    """
+    Only fires on a paragraph longer than the ceiling. Cuts between sentences
+    so no chunk ends mid-thought — the thing the starter's fixed window did.
+    """
+    if len(paragraph) <= ceiling:
+        return [paragraph]
+
+    pieces: list[str] = []
+    current = ""
+    for sentence in re.split(r"(?<=[.!?])\s+", paragraph):
+        if current and len(current) + 1 + len(sentence) > ceiling:
+            pieces.append(current)
+            current = sentence
+        else:
+            current = f"{current} {sentence}".strip()
+    if current:
+        pieces.append(current)
+
+    return pieces
+
+
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
-    Split documents into chunks. ⚠️ REPLACE THE BODY OF THIS IN MILESTONE 3.
+    Paragraph-boundary chunking with the document title carried into every chunk.
 
-    Right now it just calls the fallback. That is the plain, generic behaviour
-    the brief is talking about.
+    Why this and not a character window: campus_life posts average about 317
+    characters, so an 800-character window never cut anything and one post was
+    one chunk. That buries a question. dining_kestrel_commons.txt is wait times
+    in its first paragraph and opening hours in its second; health_center.txt
+    is walk-in hours then counselling. Ask about counselling and the old chunker
+    handed back a chunk that was half about something else.
 
-    When you write your own strategy, set `produced_by` to
-    "chunker.py::split_documents" so your README's Sample Chunks section names
-    the right function. `app.py chunks` prints that string for you.
+    Why the title is prepended: paragraph two of housing_aldridge_hall_laundry.txt
+    reads "Best time to do laundry here is Tuesday or Wednesday morning." On its
+    own, "here" names nothing. The building is in the title line. Splitting on
+    paragraphs without carrying the title just trades a noise problem for a
+    fragment problem.
 
-    Things worth thinking about before you write any code:
-      - Are your documents short posts or long guides?
-      - Is the useful information in one sentence, or spread over a paragraph?
-      - Would splitting on paragraph breaks keep more thoughts intact than
-        splitting on a character count?
+    Overlap is 0 (config.CHUNK_OVERLAP). Overlap exists to repair thoughts cut
+    in half by an arbitrary boundary; a blank line is not arbitrary, and the
+    title header already supplies the shared context.
     """
-    return fallback_split(documents)
+    ceiling = config.CHUNK_SIZE
+    minimum = config.MIN_CHUNK_CHARS
+
+    chunks: list[Chunk] = []
+    for doc in documents:
+        title, body = _title_and_body(doc.text)
+
+        paragraphs = _paragraphs(body)
+        if not paragraphs:
+            # Title-only document: the title is the whole content.
+            pieces = [title] if title else []
+            prepend_title = False
+        else:
+            pieces = []
+            for para in _merge_short(paragraphs, minimum):
+                pieces.extend(_split_long(para, ceiling))
+            prepend_title = bool(title)
+
+        for index, piece in enumerate(pieces):
+            text = f"{title}\n\n{piece}" if prepend_title else piece
+            chunks.append(
+                Chunk(
+                    text=text,
+                    source=doc.source,
+                    index=index,
+                    produced_by="chunker.py::split_documents",
+                )
+            )
+
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> str:

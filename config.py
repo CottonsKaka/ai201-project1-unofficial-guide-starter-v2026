@@ -24,11 +24,21 @@ CORPUS = os.getenv("AI201_CORPUS", "campus_life")
 
 
 # ─── Chunking (Milestone 3) ──────────────────────────────────────────────────
-# These are deliberately plain, generic numbers. Milestone 3 is where you
-# replace them with numbers that fit the documents you actually read.
+# campus_life is 88 short posts, ~317 characters each, most of them a title
+# line plus one to three paragraphs. The starter's 800-character window never
+# split anything, so one post was one chunk — including the posts that hold two
+# unrelated thoughts (dining_kestrel_commons.txt is wait times in one paragraph
+# and hours/prices in the next; health_center.txt is walk-in hours then
+# counselling). split_documents() now cuts on paragraph breaks instead.
+#
+# CHUNK_SIZE is a ceiling, not a window: paragraphs shorter than it are left
+# alone, and only a paragraph longer than it gets split further, at sentence
+# boundaries. 400 sits above almost every paragraph in this corpus, so it
+# rarely fires — it's a guard, not the main mechanism.
 
-CHUNK_SIZE = 800        # characters per chunk
-CHUNK_OVERLAP = 120     # characters shared between neighbouring chunks
+CHUNK_SIZE = 400        # ceiling per chunk; paragraphs under it are left whole
+CHUNK_OVERLAP = 0       # paragraph breaks are real boundaries, so nothing to bridge
+MIN_CHUNK_CHARS = 100   # paragraphs under this merge into their neighbour
 
 
 # ─── Retrieval (Milestone 4) ─────────────────────────────────────────────────
