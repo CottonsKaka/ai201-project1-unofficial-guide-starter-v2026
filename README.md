@@ -1,6 +1,6 @@
 # The Unofficial Guide
 
-<!-- Replace this line with your name and which corpus you picked. -->
+Cottons Kaka · corpus: `campus_life`
 
 > **This file is your submission.** Fill it in as you go — most sections get
 > written during the milestone that produces them, not at the end.
@@ -21,11 +21,16 @@
 
 ## What This Does
 
-<!-- Three or four sentences. Which corpus you picked, and the kinds of
-     questions your system answers. Write it for someone who has never seen
-     this repo.
-
-     Milestone 5. -->
+This is a question-answering system over `campus_life`: 88 short posts written
+by students about a university — dining halls, dorms, courses, and the
+administrative rules nobody explains properly. You ask a plain question like
+"is the housing lottery actually random?" and it answers from those documents
+and names the file it used, rather than from anything the model happens to
+know. It handles specific questions with a real answer in the corpus — laundry
+prices in a named building, how long you have to file a grade appeal, whether a
+course's exams come from the lectures or the textbook. Ask it something the
+documents don't cover and it checks how close the nearest chunk actually was
+and refuses instead of guessing.
 
 ## Chunking Strategy
 
@@ -159,30 +164,87 @@ first sentence is the stock opening, but the answer survives.
 
 ## Sample Answer
 
-<!-- One complete question and answer, pasted as text, with the source line
-     visible. Milestone 4. -->
+I picked this question deliberately: it's the one most likely to be attributed
+wrongly. Five chunks come back and two of them quote the same $1.75 from a
+different building.
 
-**Question:**
+**Question:** How much does a wash and dry cost in Aldridge Hall?
 
 **Answer:**
 
 ```
+(best distance 0.258, cutoff 0.6)
+
+A wash costs $1.75 and a dryer costs $1.50 in Aldridge Hall
+(housing_aldridge_hall.txt and housing_aldridge_hall_laundry.txt).
+
+Sources retrieved: housing_aldridge_hall.txt, housing_aldridge_hall_laundry.txt,
+housing_calder_annexe.txt, housing_innisfree_hall.txt,
+housing_innisfree_hall_laundry.txt
+
+1 model calls this session, 538 tokens (495 in, 43 out)
 ```
 
-**My relevance cutoff:**
+Three of the five retrieved chunks are about other buildings, and
+`housing_innisfree_hall_laundry.txt` quotes the same price. The answer named
+neither. Both files it did name genuinely carry the fact —
+`housing_aldridge_hall.txt` mentions laundry costs alongside everything else
+about the building, and `housing_aldridge_hall_laundry.txt` is the dedicated
+post — so naming two sources here is accurate rather than hedging.
 
-<!-- The number you set in config.py, and how you got there.
+**On the grounding instruction.** I read `GROUNDING_INSTRUCTION` in
+`generate.py` and decided not to change it. It tells the model to use only the
+documents provided, to refuse when they don't cover the question, and to name
+the file. What it does not do is say anything about what to do when several
+documents say nearly the same thing, which is the shape of my corpus — so I
+tested it on the worst case rather than guessing, and it held. Tightening it on
+speculation would have made it harder to tell, in unit 2, whether a change I
+made was the thing that helped.
 
-     You ran five questions your corpus covers and the five in OUT_OF_SCOPE
-     that it clearly doesn't, and wrote down the best distance for each. What
-     did those two groups look like? Where was the gap? Put the actual numbers
-     here — the table below wants all ten rows.
+**My relevance cutoff:** 0.6
 
-     Milestone 4. -->
+I measured rather than inherited it. Ten questions through `python app.py
+retrieve` — my five, then the five in `OUT_OF_SCOPE`:
 
 | Question | In corpus? | Best distance |
 |---|---|---|
-|  |  |  |
+| How long do I have to file a grade appeal? | Yes | 0.1729 |
+| Is the housing lottery actually random? | Yes | 0.2483 |
+| How much does a wash and dry cost in Aldridge Hall? | Yes | 0.2582 |
+| How much printing does each student get per semester? | Yes | 0.2749 |
+| Are CS 210 exams based on the textbook or the lectures? | Yes | 0.3799 |
+| What is the capital of Mongolia? | No | 0.8246 |
+| What is the recommended dosage of ibuprofen for a headache? | No | 0.8477 |
+| How do I write a for loop in Rust? | No | 0.8768 |
+| Who won the 1994 World Cup? | No | 0.8859 |
+| How do I change the oil in a diesel engine? | No | 0.9340 |
+
+**The two groups.** In-corpus runs 0.1729 to 0.3799. Out-of-corpus runs 0.8246
+to 0.9340. Nothing lands between 0.38 and 0.82 — a gap of 0.44 with no overlap
+at all. The midpoint is 0.602, so the starter's 0.6 turns out to sit almost
+exactly in the middle of my gap. I kept it, but it's now a number I can defend:
+it clears my worst in-corpus question by 0.22 and my closest out-of-corpus
+question by 0.22. Moving it anywhere between roughly 0.45 and 0.80 would change
+nothing about these ten questions, which is what a gap that wide means.
+
+**What I expected and didn't get.** 20 of my 88 documents open with one of three
+stock phrases, so I expected the two groups to be squeezed closer together than
+this. They weren't. The templates do show up — `course_hist_118_exams.txt` is
+the top hit for the Mongolia question, the World Cup question *and* the Rust
+question, because "Modern World History" is the nearest thing this corpus has to
+a world-history question — but they arrive at 0.82 and above, well outside the
+gap. So the boilerplate changes *which* wrong document wins, not how close the
+wrong document gets. That distinction is worth more to me than the prediction
+would have been if it had been right.
+
+**A crowding problem the gate doesn't catch.** The Aldridge laundry question
+retrieves the right chunk first (0.2582), but four of the five chunks it brings
+back are about *other buildings'* laundry, and
+`housing_innisfree_hall_laundry.txt` quotes the same $1.75. The gate is
+perfectly happy — the best distance is fine. The risk is attribution: an answer
+that cites Innisfree would be factually right and still wrong. That is what
+criterion 5 is for, and I didn't know it was a live risk until I read this
+output.
 
 ## How I Used AI
 

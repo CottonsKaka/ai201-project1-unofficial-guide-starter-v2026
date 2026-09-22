@@ -59,12 +59,15 @@ in at least 4 of 5 tries.
      just keep five of them, or the "4 of 5" above has nothing to be 4 of. -->
 
 **Why this target:**
-<!-- TODO (Milestone 4): fill this in once I've measured the two groups of
-     distances. What I expect going in: 20 of my 88 documents open with one of
-     three stock phrases, so a lot of chunks look alike to the embedder, and I
-     think that will squeeze the in-corpus and out-of-corpus groups closer
-     together than they'd otherwise be. Whether the gap is clean or messy is
-     the thing I'll report here. -->
+I measured both groups in Milestone 4 before setting this. My five in-corpus
+questions land between 0.1729 and 0.3799; the five in `OUT_OF_SCOPE` land
+between 0.8246 and 0.9340. Nothing falls in between — a gap of 0.44 with my
+cutoff of 0.6 sitting in the middle of it. On that evidence all five of the
+out-of-corpus questions are refused, so 4 of 5 is a target I expect to beat.
+I am leaving it at 4 rather than raising it to 5 because the five questions
+`run_eval.py` puts through the gate in unit 2 are not the only questions a
+person could ask, and my gap was measured on exactly five. One refusal failing
+on a question I haven't thought of yet is a margin I want.
 
 ---
 
