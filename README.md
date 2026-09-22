@@ -257,9 +257,44 @@ output.
 
      Milestone 5. -->
 
-**1.**
+**1.** I asked Claude to replace the starter's 800-character window with a
+chunker that splits on paragraph breaks. It wrote `split_documents` in
+`chunker.py` and added two things I hadn't asked for: it prepends each
+document's title line to every chunk, and it merges any paragraph under 100
+characters into its neighbour. I kept both. The title prefix turned out to
+matter for a reason I could see in my own output — sample chunk 3 reads "It's
+front-loaded" and nothing in that sentence names the course, so without the
+title riding along that chunk would be meaningless on its own. The 100-character
+floor shows up in the index summary as a shortest chunk of 117 characters, which
+is where criterion 4 came from.
 
-**2.**
+**2.** For criteria 4 and 5 I first proposed "no chunk shorter than 10
+characters" and "for at least 4 of 5 questions, the top 5 chunks come from 1 or
+more different documents." Claude pointed out that neither could ever fail: my
+shortest chunk is already 117, and retrieval always returns at least one
+document, so both were true by definition. I changed them to "5 of 5 sampled
+chunks read as a complete thought" and "for at least 4 of 5 questions, the
+source named is the file the answer actually came from" — targets that can
+actually come out false.
+
+**A third moment, and the one I think matters most.** Before I measured
+anything, Claude predicted that the 20 near-template documents in my corpus
+would squeeze my in-corpus and out-of-corpus distances together and make the
+cutoff hard to place. I ran the ten `retrieve` commands and got the opposite: a
+clean gap of 0.44 with nothing in it. The templates did show up — `course_hist_118`
+files are the top hit for three of my five out-of-scope questions — but at 0.82
+and above, nowhere near the gap. I went with the measurement rather than the
+prediction, and that's written up in the cutoff section above.
+
+**Scope of the help, stated plainly.** This was substantial, not incidental.
+Claude wrote the chunker and its helper functions, drafted the Chunking Strategy,
+Sample Chunks, Sample Answer and relevance-cutoff sections of this README from
+my command output, and drafted the "why this target" reasoning under all five
+criteria in `criteria.md`. It also phrased my five test questions and chose
+their `expects` strings, from five topics I picked. The corpus choice, those
+five topics, the numbers in criteria 4 and 5, and every command that produced
+the data above are mine. I'm recording this because the writing in this README does not sound like
+me, and saying so is better than leaving a grader to notice it.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
